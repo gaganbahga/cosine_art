@@ -72,19 +72,15 @@ def get_widths(width, no_divisions):
 	return blocks.astype(np.int32)
 
 
-def subsample(img, row_factor=10, col_factor=1):
-	num_rows = img.shape[0]//row_factor
-	num_cols = img.shape[1]//col_factor
-	margin_rows = img.shape[0] - num_rows * row_factor
-	margin_cols = img.shape[1] - num_cols * col_factor
-	img = img[margin_rows//2 : margin_rows//2 + num_rows * row_factor, 
-		  	  margin_cols//2 : margin_cols//2 + num_cols * col_factor]
+def subsample(img, pixels_per_wave=10):
+	num_rows = img.shape[0]//pixels_per_wave
+	num_cols = img.shape[1]
+	margin_rows = img.shape[0] - num_rows * pixels_per_wave
+	img = img[margin_rows//2 : margin_rows//2 + num_rows * pixels_per_wave, :]
 
 	new_img = np.zeros([num_rows, num_cols])
 	for i in range(num_rows):
-		for j in range(num_cols):
-			new_img[i, j] = (np.median(img[i * row_factor : (i + 1) * row_factor,
-								j * col_factor : (j + 1) * col_factor]))
+		new_img[i, :] = (np.median(img[i * pixels_per_wave : (i + 1) * pixels_per_wave, :]))
 	return new_img
 
 if __name__ == '__main__':

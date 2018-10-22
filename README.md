@@ -1,6 +1,6 @@
 # Cosine Art
 
-This is a script to create an image using frequency modulated sine waves, given an input image. It just uses numpy to process the image pixel by pixel. The image is first 
+This is a script to create an image using frequency modulated sine waves, given an input image. It just uses numpy to process the image pixel by pixel. The image is first converted to greyscale followed by subsampling across columns (decrease the number of rows). This results in a pixel averaged image with less number of rows but the same number of pixels as the original image. The pixel values of a particular row act as the frequencies with which we modulate the waveform of that  row. Each row containing the sine wave is of the same width with which we initially subsampled the image. For each row, we calculate the sine values as we progress from left to right in that row. The continuity is brought in by tracking the phase of wave as we move. Thus the position of wave at index `i` in the row will be `a sin(\phi + f[i])` where `a` is the row width, `\phi` is till index `i-1` and `f[i]` is the intensity at index `i`. Using this information we plot each row. There is some interpolation involved and some constant factors multiplied to get the desired range for everything.
 
 ## Usage
 The usage is as follows:

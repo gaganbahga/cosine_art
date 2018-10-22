@@ -1,3 +1,8 @@
+#!/bin/bash/python3
+
+# cosine_art.py
+# author: Gagandeep Singh, 19 Oct, 2018
+
 from os import path
 import imageio
 import argparse
@@ -6,8 +11,10 @@ import numpy as np
 
 def main(args):
 	img = np.asarray(imageio.imread(args.input_file))
+	if len(img.shape) == 3 and img.shape[-1] == 4: # last dimension is alpha
+		img = img[:, :, :3]
 	if len(img.shape) == 3 and img.shape[-1] == 3:
-		img = img * np.asarray([0.299, 0.587, 0.114])
+		img = img * np.asarray([0.299, 0.587, 0.114]) # convert to greyscale
 		img = np.sum(img, axis=2)
 	if not args.invert:
 		img = np.max(img) - img
@@ -30,7 +37,15 @@ def main(args):
 	print('Generated image is present at', output_file)
 
 def get_color(color):
+	"""
+	Given a color code or color name, return a tuple of RGB values
+	:param color: str, color code or name
+	:return: (int, int, int), RGB tuple
+	"""
 	def decode_rgb_code(code):
+		"""
+		Given a color code, return a tuple of RGB values
+		"""
 		r = int(code[:2], 16)
 		g = int(code[2:4], 16)
 		b = int(code[4:], 16)
@@ -57,6 +72,13 @@ def get_color(color):
 
 
 def get_cosine_img(img, row_width, freq_factor):
+	"""
+	Main function for getting cosine image
+	:param img: np.ndarray, shape=[length, width] image array
+	:param row_width: int, width of each wave row in pixels
+	:param freq_factor: float, factor for getting frequency corresponding to internsity
+	:return: np.ndarray, same shape as img, converted cosine image 
+	"""
 	img = img/img.max()
 	new_img = np.zeros([row_width * img.shape[0], img.shape[1]])
 	max_freq = 2 * np.pi * freq_factor
@@ -77,6 +99,14 @@ def get_cosine_img(img, row_width, freq_factor):
 
 
 def get_column(f, f_prev, phase, row_width):
+	"""
+	Get the values for a particular column of a row of the image
+	:param f: float, "frequency" of this column
+	:param f_prev: float, freequncy of immediate previous column
+	:param phase: float, phase at the current column for starting point
+	:param row_width: int, width of each wave row in pixels
+	:return: np.ndarray, 1-D array equal to row-width (or column height)
+	"""
 	block = np.zeros(row_width)
 	last_sample = row_width//2 + int((row_width//2) * np.sin(phase)) - 1
 	y = (row_width//2) * np.sin(f + phase)
@@ -92,15 +122,13 @@ def get_column(f, f_prev, phase, row_width):
 	phase = np.unwrap(np.asarray([phase + f ]))[0]
 	return block, phase
 
-		
-def get_widths(width, no_divisions):
-	blocks = (width//no_divisions) * np.ones([no_divisions])
-	left = width - (width//no_divisions) * no_divisions
-	blocks[:left] += 1
-	return blocks.astype(np.int32)
-
 
 def subsample(img, row_width):
+	"""
+	Subsample the image, reducing number of rows
+	:param img: np.ndarray, 2-D image array
+	:param row_width: int, subsample the rows by that amount
+	"""
 	num_rows = img.shape[0]//row_width
 	num_cols = img.shape[1]
 	margin_rows = img.shape[0] - num_rows * row_width
@@ -110,6 +138,7 @@ def subsample(img, row_width):
 	for i in range(num_rows):
 		new_img[i, :] = (np.median(img[i * row_width : (i + 1) * row_width, :], axis=0))
 	return new_img
+
 
 if __name__ == '__main__':
 	class Range(object):
@@ -135,7 +164,7 @@ if __name__ == '__main__':
 						type=int, help='width of each waveform row in pixels')
 	parser.add_argument('-f', '--freq-factor', default=0.2,
 						type=float, choices=[Range(0.1, 0.4)],
-						help='frequency factor [0.05, 0.4] for wavforms, higher the number, more compact the wavs')
+						help='frequency factor in range [0.1, 0.4] for wavforms, higher the number, more compact the wavs')
 	parser.add_argument('--invert', action='store_true',
 					 	help='invert colors, so that dark goes to less frequency and vice-versa')
 	args = parser.parse_args()

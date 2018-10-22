@@ -38,4 +38,4 @@ python3 cosine_art.py -i test_images/test_image.jpg
 As of now, jpeg, png are supported, without any exhaustive testing. In case of any issues, or if you want more formats supported, create an issue.
 
 ## Test Image credits
-Both test images are taken from [unsplash.com](unsplash.com). `test_image_1.jpg` is a photo by [Shelley Kim](https://unsplash.com/@shelleykim), and `test_image_2.jpg` is by [taylor hernandez](https://unsplash.com/@taylormae)
+Both test images are taken from [unsplash.com](unsplash.com). `test_image_1.jpg` is a photo by [taylor hernandez](https://unsplash.com/@taylormae), and `test_image_2.jpg` is by [Shelley Kim](https://unsplash.com/@shelleykim).

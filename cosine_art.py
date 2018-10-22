@@ -1,26 +1,68 @@
-from scipy import misc
-import matplotlib.pyplot as plt
+from os import path
+import imageio
+import argparse
+from tqdm import tqdm
 import numpy as np
 
-def main():
-	img = misc.imread('test_image.jpg')
-	img = img * np.asarray([0.299, 0.587, 0.114])
-	img = np.sum(img, axis=2)
-	img = np.max(img) - img
+def main(args):
+	img = np.asarray(imageio.imread(args.input_file))
+	if len(img.shape) == 3 and img.shape[-1] == 3:
+		img = img * np.asarray([0.299, 0.587, 0.114])
+		img = np.sum(img, axis=2)
+	if not args.invert:
+		img = np.max(img) - img
 
-	img = subsample(img)
-	img = get_cosine_img(img)
-	img = -img + 1 
+	img = subsample(img, args.width)
+	img = get_cosine_img(img, args.width, args.freq_factor)
+	wav_color = get_color(args.wav_color)
+	bg_color = get_color(args.background_color)
 
-	misc.imsave('generated.png', img)
+	final_img = np.zeros((img.shape[0], img.shape[1], 3), dtype='uint8')
 
-def get_cosine_img(img, row_width=10, col_width=1, max_wavs_perblock=0.1):
+	for i in range(3):
+		final_img[:,:,i][img == 0] = bg_color[i]
+		final_img[:,:,i][img == 1] = wav_color[i]
+
+	output_file = args.output_file
+	if output_file is None:
+		output_file = path.join(path.dirname(args.input_file), 'generated.png')
+	imageio.imwrite(output_file, final_img.astype('uint8'))
+	print('Generated image is present at', output_file)
+
+def get_color(color):
+	def decode_rgb_code(code):
+		r = int(code[:2], 16)
+		g = int(code[2:4], 16)
+		b = int(code[4:], 16)
+		return (r, g, b)
+
+	if color[0] == '#':
+		assert len(color) == 7, 'invalid color code'
+		return decode_rgb_code(color[1:])
+	else:
+		if color.lower() == 'black':
+			return (0, 0, 0)
+		elif color.lower() == 'white':
+			return (255, 255, 255)
+		elif color.lower() == 'red':
+			 return (255, 0, 0)
+		elif color.lower() == 'green':
+			return (0, 255, 255)
+		elif color.lower() == 'blue':
+			return (0, 0, 255)
+		elif color.lower() == 'yellow':
+			return (255, 255, 0)
+		else:
+			raise ValueError('color name not recognized')
+
+
+def get_cosine_img(img, row_width, freq_factor):
 	img = img/img.max()
-	new_img = np.zeros([row_width * img.shape[0], col_width * img.shape[1]])
-	max_freq = 2 * np.pi * max_wavs_perblock/col_width
+	new_img = np.zeros([row_width * img.shape[0], img.shape[1]])
+	max_freq = 2 * np.pi * freq_factor
 	img = max_freq * img
 
-	for i in range(img.shape[0]):
+	for i in tqdm(range(img.shape[0])):
 		row = img[i]
 		phase = 0
 		for j in range(len(row)):
@@ -29,39 +71,25 @@ def get_cosine_img(img, row_width=10, col_width=1, max_wavs_perblock=0.1):
 				f_prev = f
 			else:
 				f_prev = row[j - 1]
-			block, phase = get_block(f, f_prev, max_freq, phase, row_width, col_width)
-			new_img[i * row_width : (i+1)*row_width, j * col_width : (j+1)*col_width] = block
+			block, phase = get_column(f, f_prev, phase, row_width)
+			new_img[i * row_width : (i+1)*row_width, j : j+1] = np.expand_dims(block, axis=1)
 	return new_img
 
 
-def get_block(f, f_prev, max_freq, phase, row_width, col_width, block_subdivision=1):
-	freqs = np.linspace(f_prev, f, block_subdivision)
-	block = np.zeros([row_width, col_width])
-	block_widths = get_widths(col_width, block_subdivision)
-	# print(block_widths)
-	last_sample = row_width//2 + int((row_width//2) * np.sin(phase))
-	for i, f in enumerate(freqs):
-		y = 0.98*(row_width//2) * np.sin(f * np.arange(block_widths[i]) + phase)
-		y = y + row_width//2
-		y = y.astype(np.int32)
-		# print(block_widths[i], row_width)
-		sub_block = np.zeros((row_width, block_widths[i]))
-		# sub_block[y.astype(np.int32), np.arange(block_widths[i])] = 1
-		for j in range(block_widths[i]):
-			if j != 0:
-				prev = y[j-1]
-			else:
-				prev = last_sample
-			
-			if y[j] > prev:
-				sub_block[prev:y[j], j] = 1
-			else:
-				sub_block[y[j]:prev, j] = 1
-		last_sample = y[-1]
-			# sub_block[y[j]:(y[j+1])//2, j] = 1
-		# print(block_widths[:i],block_widths[:i+1])
-		block[:, np.sum(block_widths[:i]):np.sum(block_widths[:i+1])] = sub_block
-		phase = np.unwrap(np.asarray([phase + f * block_widths[i]]))[0]
+def get_column(f, f_prev, phase, row_width):
+	block = np.zeros(row_width)
+	last_sample = row_width//2 + int((row_width//2) * np.sin(phase)) - 1
+	y = (row_width//2) * np.sin(f + phase)
+	y = y + row_width//2
+	y = y.astype(np.int32)
+	block[last_sample] = 1
+
+	if y > last_sample:
+		block[last_sample:y] = 1
+	else:
+		block[y:last_sample] = 1
+
+	phase = np.unwrap(np.asarray([phase + f ]))[0]
 	return block, phase
 
 		
@@ -72,16 +100,43 @@ def get_widths(width, no_divisions):
 	return blocks.astype(np.int32)
 
 
-def subsample(img, pixels_per_wave=10):
-	num_rows = img.shape[0]//pixels_per_wave
+def subsample(img, row_width):
+	num_rows = img.shape[0]//row_width
 	num_cols = img.shape[1]
-	margin_rows = img.shape[0] - num_rows * pixels_per_wave
-	img = img[margin_rows//2 : margin_rows//2 + num_rows * pixels_per_wave, :]
+	margin_rows = img.shape[0] - num_rows * row_width
+	img = img[margin_rows//2 : margin_rows//2 + num_rows * row_width, :]
 
 	new_img = np.zeros([num_rows, num_cols])
 	for i in range(num_rows):
-		new_img[i, :] = (np.median(img[i * pixels_per_wave : (i + 1) * pixels_per_wave, :]))
+		new_img[i, :] = (np.median(img[i * row_width : (i + 1) * row_width, :], axis=0))
 	return new_img
 
 if __name__ == '__main__':
-	main()
+	class Range(object):
+	    def __init__(self, start, end):
+	        self.start = start
+	        self.end = end
+	    def __eq__(self, other):
+	        return self.start <= other <= self.end
+	    def __str__(self):
+	    	return '[' + str(self.start) + ',' + str(self.end) + ']'
+	        
+	parser = argparse.ArgumentParser('Create image using cosine curves')
+	parser.add_argument('-i', '--input-file', required=True,
+						type=str, help='path to input image')
+	parser.add_argument('-o', '--output-file', default=None,
+						type=str, help='path to output image')
+	parser.add_argument('-c', '--wav-color', default='black',
+						type=str, help='color of the waveforms. It could either be a code in the format \
+						e.g. #FF00FF or one of [black, white, red, green, blue, yellow]')
+	parser.add_argument('-b', '--background-color', default='white',
+						type=str, help='background color, for fomart look at wav-color')
+	parser.add_argument('-w', '--width', default=15,
+						type=int, help='width of each waveform row in pixels')
+	parser.add_argument('-f', '--freq-factor', default=0.2,
+						type=float, choices=[Range(0.1, 0.4)],
+						help='frequency factor [0.05, 0.4] for wavforms, higher the number, more compact the wavs')
+	parser.add_argument('--invert', action='store_true',
+					 	help='invert colors, so that dark goes to less frequency and vice-versa')
+	args = parser.parse_args()
+	main(args)

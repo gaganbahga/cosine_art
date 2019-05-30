@@ -5,13 +5,11 @@ This is a script to create an image using frequency modulated sine waves, given 
 ## Usage
 The usage is as follows:
 ```bash
-python3 cosine_art.py [options] -i input_image_path
+python3 cosine_art.py [options] input_image_path
 ```
 All the command line options are as follows:
 ```
   -h, --help            show this help message and exit
-  -i INPUT_FILE, --input-file INPUT_FILE
-                        path to input image
   -o OUTPUT_FILE, --output-file OUTPUT_FILE
                         path to output image
   -c WAV_COLOR, --wav-color WAV_COLOR
@@ -22,8 +20,8 @@ All the command line options are as follows:
                         background color, for fomart look at wav-color
   -w WIDTH, --width WIDTH
                         width of each waveform row in pixels
-  -f {[0.1,0.4]}, --freq-factor {[0.1,0.4]}
-                        frequency factor in range [0.1, 0.4] for wavforms,
+  -f {[0.,1.]}, --freq-factor {[0.,1.]}
+                        frequency factor in range [0., 1.] for wavforms,
                         higher the number, more compact the wavs
   --invert              invert colors, so that dark goes to less frequency and
                         vice-versa
@@ -31,7 +29,7 @@ All the command line options are as follows:
 
 The script as run on one of the test images provided in `test_images`:
 ```bash
-python3 cosine_art.py -i test_images/test_image.jpg
+python3 cosine_art.py test_images/test_image_1.jpg
 ```
 
 ## Formats supported

@@ -10,7 +10,7 @@ from tqdm import tqdm
 import numpy as np
 
 def main(args):
-	img = np.asarray(imageio.imread(args.input_file))
+	img = np.asarray(imageio.imread(args.input))
 	if len(img.shape) == 3 and img.shape[-1] == 4: # last dimension is alpha
 		img = img[:, :, :3]
 	if len(img.shape) == 3 and img.shape[-1] == 3:
@@ -19,8 +19,11 @@ def main(args):
 	if not args.invert:
 		img = np.max(img) - img
 
-	img = subsample(img, args.width)
-	img = get_cosine_img(img, args.width, args.freq_factor)
+	row_width = img.shape[0]//args.num_rows
+	freq_factor = args.freq_factor * 0.3 + 0.1 # just scaling
+
+	img = subsample(img, args.num_rows)
+	img = get_cosine_img(img, row_width, freq_factor)
 	wav_color = get_color(args.wav_color)
 	bg_color = get_color(args.background_color)
 
@@ -32,7 +35,7 @@ def main(args):
 
 	output_file = args.output_file
 	if output_file is None:
-		output_file = path.join(path.dirname(args.input_file), 'generated.png')
+		output_file = path.join(path.dirname(args.input), 'generated.png')
 	imageio.imwrite(output_file, final_img.astype('uint8'))
 	print('Generated image is present at', output_file)
 
@@ -123,13 +126,14 @@ def get_column(f, f_prev, phase, row_width):
 	return block, phase
 
 
-def subsample(img, row_width):
+def subsample(img, num_rows):
 	"""
-	Subsample the image, reducing number of rows
+	Subsample the image, averaging over num_rows
 	:param img: np.ndarray, 2-D image array
-	:param row_width: int, subsample the rows by that amount
+	:param num_rows: int, subsample per num_rows
 	"""
-	num_rows = img.shape[0]//row_width
+	row_width = img.shape[0]//num_rows
+
 	num_cols = img.shape[1]
 	margin_rows = img.shape[0] - num_rows * row_width
 	img = img[margin_rows//2 : margin_rows//2 + num_rows * row_width, :]
@@ -151,7 +155,7 @@ if __name__ == '__main__':
 	    	return '[' + str(self.start) + ',' + str(self.end) + ']'
 	        
 	parser = argparse.ArgumentParser('Create image using cosine curves')
-	parser.add_argument('-i', '--input-file', required=True,
+	parser.add_argument('input',
 						type=str, help='path to input image')
 	parser.add_argument('-o', '--output-file', default=None,
 						type=str, help='path to output image')
@@ -159,12 +163,12 @@ if __name__ == '__main__':
 						type=str, help='color of the waveforms. It could either be a code in the format \
 						e.g. #FF00FF or one of [black, white, red, green, blue, yellow]')
 	parser.add_argument('-b', '--background-color', default='white',
-						type=str, help='background color, for fomart look at wav-color')
-	parser.add_argument('-w', '--width', default=15,
-						type=int, help='width of each waveform row in pixels')
-	parser.add_argument('-f', '--freq-factor', default=0.2,
-						type=float, choices=[Range(0.1, 0.4)],
-						help='frequency factor in range [0.1, 0.4] for wavforms, higher the number, more compact the wavs')
+						type=str, help='background color, for format look at wav-color')
+	parser.add_argument('-n', '--num-rows', default=100,
+						type=int, help='number of waveforms (rows) in the generated image')
+	parser.add_argument('-f', '--freq-factor', default=1/3,
+						type=float, choices=[Range(0., 1.)],
+						help='frequency factor in range [0., 1.] for wavforms, higher the number, more compact the wavs')
 	parser.add_argument('--invert', action='store_true',
 					 	help='invert colors, so that dark goes to less frequency and vice-versa')
 	args = parser.parse_args()

@@ -5,10 +5,14 @@ This is a script to create an image using frequency modulated sine waves, given 
 ## Usage
 The usage is as follows:
 ```bash
-python3 cosine_art.py [options] input_image_path
+python3 cosine_art.py [options] input
 ```
 All the command line options are as follows:
 ```
+positional arguments:
+  input                 path to input image
+
+optional arguments:
   -h, --help            show this help message and exit
   -o OUTPUT_FILE, --output-file OUTPUT_FILE
                         path to output image
